@@ -1,209 +1,115 @@
-import pandas as pd
-import os
-
-# Verificar se o arquivo 'cashback.xlsx' existe; se não, criar um DataFrame vazio com as colunas desejadas
-if not os.path.exists('cashback.xlsx'):
-    df = pd.DataFrame(columns=['CPF', 'Nome', 'Cidade', 'Cashback'])
-    df.to_excel('cashback.xlsx', index=False)
+import csv
 
 
-def calcular_cashback(valor):
-    return valor * 0.02
+def cadastrar_cliente():
+    cpf = input("Digite o CPF do cliente: ")
+    nome = input("Digite o nome do cliente: ")
+    cidade = input("Digite a cidade do cliente: ")
 
-
-def validar_cpf(cpf):
-    # Remover qualquer caractere não numérico
-    cpf = ''.join(filter(str.isdigit, cpf))
-
-    if len(cpf) == 11:
-        return cpf
-    else:
-        raise ValueError("CPF deve ter 11 dígitos.")
-
-
-def cpf_ja_cadastrado(cpf):
-    try:
-        # Carregar a planilha Excel
-        df = pd.read_excel('cashback.xlsx')
-
-        # Verificar se o CPF já está na lista de clientes
-        return cpf in df['CPF'].values
-
-    except FileNotFoundError:
-        return False
-
-
-def cadastrar_cliente(clientes, cliente_info):
-    try:
-        # Validar o CPF
-        cpf = validar_cpf(cliente_info['CPF'])
-
-        # Verificar se o CPF já existe na planilha
-        if cpf_ja_cadastrado(cpf):
-            raise ValueError("CPF já cadastrado.")
-
-        # Adicionar o novo cliente à lista com o cashback calculado
-        cliente_info['CPF'] = cpf  # Atualiza o CPF validado
-        cliente_info['Cashback'] = calcular_cashback(cliente_info['Valor'])
-
-        # Carregar a planilha Excel
-        df = pd.read_excel('cashback.xlsx')
-
-        # Criar um novo DataFrame com o novo cliente
-        novo_cliente_df = pd.DataFrame([cliente_info])
-
-        # Concatenar o novo DataFrame com o DataFrame existente
-        df = pd.concat([df, novo_cliente_df], ignore_index=True)
-
-        # Salvar o DataFrame no arquivo Excel
-        df.to_excel('cashback.xlsx', index=False)
-
-        # Imprimir a mensagem de sucesso com o valor do cashback
-        print(f"Cliente cadastrado com sucesso! Valor do cashback: R${
-              cliente_info['Cashback']:.2f}")
-
-    except Exception as e:
-        print(f"Erro ao cadastrar o cliente: {str(e)}")
-
-
-def consultar_saldo(clientes, cpf):
-    try:
-        # Validar o CPF
-        cpf = validar_cpf(cpf)
-
-        # Carregar a planilha Excel
-        df = pd.read_excel('cashback.xlsx')
-
-        # Procurar pelo cliente com o CPF especificado
-        cliente = df[df['CPF'] == cpf]
-        if not cliente.empty:
-            saldo_atual = cliente.iloc[0]['Cashback']
-            nome_cliente = cliente.iloc[0]['Nome']
-
-            print(f"Nome do cliente: {nome_cliente}")
-            print(f"Saldo de Cashback atual: R${saldo_atual:.2f}")
-
-            utilizar_saldo = input(
-                "Deseja utilizar o saldo? (S/N): ").strip().lower()
-            if utilizar_saldo == 's':
-                valor_utilizado = float(
-                    input("Digite o valor a ser utilizado: "))
-                if valor_utilizado <= saldo_atual:
-                    saldo_novo = saldo_atual - valor_utilizado
-                    df.loc[df['CPF'] == cpf, 'Cashback'] = saldo_novo
-                    df.to_excel('cashback.xlsx', index=False)
-                    print(f"Saldo utilizado com sucesso! Novo saldo: R${
-                          saldo_novo:.2f}")
-                else:
-                    print("Saldo insuficiente para a transação.")
-            else:
+    # Verifica se o CPF já está cadastrado
+    with open('cashback.csv', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if cpf == row[0]:
+                print("CPF já cadastrado. Por favor, tente novamente.")
                 return
 
-        else:
-            print("Cliente não encontrado.")
-    except FileNotFoundError:
-        print("A planilha 'cashback.xlsx' ainda não foi criada.")
+    # Cria o novo cadastro do cliente com saldo zero
+    with open('cashback.csv', 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([cpf, nome, cidade, 0])
+
+    print("Cliente cadastrado com sucesso!")
 
 
-def adicionar_compra(clientes, cpf, valor_compra):
-    try:
-        # Carregar a planilha Excel
-        df = pd.read_excel('cashback.xlsx')
+def consultar_saldo():
+    cpf = input("Digite o CPF do cliente: ")
 
-        # Procurar pelo cliente com o CPF especificado
-        cliente = df[df['CPF'] == cpf]
-        if not cliente.empty:
-            saldo_atual = cliente.iloc[0]['Cashback']
-            nome_cliente = cliente.iloc[0]['Nome']
+    # Busca o saldo do cliente
+    with open('cashback.csv', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if cpf == row[0]:
+                print("Saldo do cliente:", row[3])
+                return
 
-            # Calcular o cashback da compra
-            cashback = calcular_cashback(valor_compra)
-
-            # Atualizar o saldo de cashback na planilha
-            novo_saldo = saldo_atual + cashback
-            df.loc[df['CPF'] == cpf, 'Cashback'] = novo_saldo
-            df.to_excel('cashback.xlsx', index=False)
-
-            print(f"Cliente: {nome_cliente}")
-            print(f"Saldo antigo: R${saldo_atual:.2f}")
-            print(f"Saldo novo: R${novo_saldo:.2f}")
-        else:
-            print("Cliente não encontrado.")
-    except FileNotFoundError:
-        print("A planilha 'cashback.xlsx' ainda não foi criada.")
+    print("Cliente não encontrado.")
 
 
-def utilizar_saldo(clientes, cpf, valor_utilizado):
-    try:
-        # Carregar a planilha Excel
-        df = pd.read_excel('cashback.xlsx')
+def adicionar_compra():
+    cpf = input("Digite o CPF do cliente: ")
+    valor_compra = float(input("Digite o valor da compra: "))
 
-        # Procurar pelo cliente com o CPF especificado
-        cliente = df[df['CPF'] == cpf]
-        if not cliente.empty:
-            saldo_atual = cliente.iloc[0]['Cashback']
-            nome_cliente = cliente.iloc[0]['Nome']
+    # Atualiza o cashback do cliente
+    rows = []
+    with open('cashback.csv', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if cpf == row[0]:
+                row[3] = str(float(row[3]) + (valor_compra * 0.02))
+            rows.append(row)
 
-            if valor_utilizado <= saldo_atual:
-                saldo_novo = saldo_atual - valor_utilizado
-                df.loc[df['CPF'] == cpf, 'Cashback'] = saldo_novo
-                df.to_excel('cashback.xlsx', index=False)
+    with open('cashback.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(rows)
 
-                print(f"Cliente: {nome_cliente}")
-                print(f"Saldo antigo: R${saldo_atual:.2f}")
-                print(f"Saldo novo: R${saldo_novo:.2f}")
-            else:
-                print("Saldo insuficiente para a transação.")
-        else:
-            print("Cliente não encontrado.")
-    except FileNotFoundError:
-        print("A planilha 'cashback.xlsx' ainda não foi criada.")
+    print("Compra adicionada com sucesso.")
+
+
+def utilizar_saldo():
+    cpf = input("Digite o CPF do cliente: ")
+    valor_utilizado = float(input("Digite o valor a ser utilizado do saldo: "))
+
+    # Atualiza o cashback do cliente
+    rows = []
+    with open('cashback.csv', 'r') as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if cpf == row[0]:
+                if valor_utilizado <= float(row[3]):
+                    row[3] = str(float(row[3]) - valor_utilizado)
+                else:
+                    print("Saldo insuficiente.")
+                    return
+            rows.append(row)
+
+    with open('cashback.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(rows)
+
+    print("Saldo utilizado com sucesso.")
+
+# Função principal do programa
 
 
 def main():
-    try:
-        # Tentar carregar clientes existentes do arquivo Excel
-        df = pd.read_excel('cashback.xlsx')
-        clientes = df.to_dict('records')
-    except FileNotFoundError:
-        clientes = []
-
     while True:
-        print("\nSistema de Cashback")
-        print("1 - Cadastrar Cliente")
-        print("2 - Consultar Saldo")
-        print("3 - Adicionar Compra")
-        print("4 - Utilizar Saldo")
-        print("5 - Sair")
+        print("\nMenu:")
+        print("1 - Cadastrar cliente")
+        print("2 - Consultar saldo")
+        print("3 - Adicionar compra")
+        print("4 - Utilizar saldo")
+        print("0 - Sair")
 
-        opcao = input("Escolha uma opção: ").strip()
+        opcao = input("Digite a opção desejada: ")
 
         if opcao == '1':
-            cliente_info = {}
-            cliente_info['CPF'] = input(
-                "Digite o CPF do cliente (11 dígitos, sem pontos): ")
-            cliente_info['Nome'] = input("Digite o nome do cliente: ")
-            cliente_info['Cidade'] = input(
-                "Digite a cidade do cliente: ")  # Adicionar campo cidade
-            cliente_info['Valor'] = float(input("Digite o valor da compra: "))
-            cadastrar_cliente(clientes, cliente_info)
+            cadastrar_cliente()
         elif opcao == '2':
-            cpf = input("Digite o CPF do cliente: ")
-            consultar_saldo(clientes, cpf)
+            consultar_saldo()
         elif opcao == '3':
-            cpf = input("Digite o CPF do cliente: ")
-            valor_compra = float(input("Digite o valor da compra: "))
-            adicionar_compra(clientes, cpf, valor_compra)
+            adicionar_compra()
         elif opcao == '4':
-            cpf = input("Digite o CPF do cliente: ")
-            valor_utilizado = float(input("Digite o valor a ser utilizado: "))
-            utilizar_saldo(clientes, cpf, valor_utilizado)
-        elif opcao == '5':
-            print("Saindo do programa...")
+            utilizar_saldo()
+        elif opcao == '0':
             break
         else:
-            print("Opção inválida. Tente novamente.")
+            print("Opção inválida. Por favor, tente novamente.")
+
+        voltar_menu = input("Deseja voltar ao menu principal? (s/n): ")
+        if voltar_menu.lower() != 's':
+            break
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
