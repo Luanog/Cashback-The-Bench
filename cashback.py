@@ -1,11 +1,11 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 
 # Configuração das credenciais do Google Sheets
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    'cashback-the-bench-json-1ff0645ee92a', scope)
+credentials = Credentials.from_service_account_file(
+    'C:\\Users\\admin\\Desktop\\Projetos Luan\\Projetos Python\\Cashback\\cashback-the-bench-json-1ff0645ee92a.json', scopes=scope)
 client = gspread.authorize(credentials)
 
 # Função para cadastrar um cliente na planilha
