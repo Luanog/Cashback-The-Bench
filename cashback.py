@@ -1,83 +1,95 @@
-import csv
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Configuração das credenciais do Google Sheets
+scope = ['https://spreadsheets.google.com/feeds',
+         'https://www.googleapis.com/auth/drive']
+credentials = ServiceAccountCredentials.from_json_keyfile_name(
+    'cashback-the-bench-json-1ff0645ee92a', scope)
+client = gspread.authorize(credentials)
+
+# Função para cadastrar um cliente na planilha
 
 
 def cadastrar_cliente():
+    planilha = client.open('Cashback The Bench')
+    sheet = planilha.get_worksheet(0)
+
     cpf = input("Digite o CPF do cliente: ")
     nome = input("Digite o nome do cliente: ")
     cidade = input("Digite a cidade do cliente: ")
 
     # Verifica se o CPF já está cadastrado
-    with open('cashback.csv', 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if cpf == row[0]:
-                print("CPF já cadastrado. Por favor, tente novamente.")
-                return
+    cpf_list = sheet.col_values(1)
+    if cpf in cpf_list:
+        print("CPF já cadastrado. Por favor, tente novamente.")
+        return
 
     # Cria o novo cadastro do cliente com saldo zero
-    with open('cashback.csv', 'a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([cpf, nome, cidade, 0])
-
+    sheet.append_row([cpf, nome, cidade, 0])
     print("Cliente cadastrado com sucesso!")
+
+# Função para consultar o saldo de um cliente na planilha
 
 
 def consultar_saldo():
+    planilha = client.open('Cashback The Bench')
+    sheet = planilha.get_worksheet(0)
+
     cpf = input("Digite o CPF do cliente: ")
 
     # Busca o saldo do cliente
-    with open('cashback.csv', 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if cpf == row[0]:
-                print("Saldo do cliente:", row[3])
-                return
+    cpf_list = sheet.col_values(1)
+    if cpf in cpf_list:
+        row_index = cpf_list.index(cpf) + 1
+        saldo = float(sheet.cell(row_index, 4).value)
+        print(f"Saldo do cliente {sheet.cell(
+            row_index, 2).value}: R${saldo:.2f}")
+    else:
+        print("Cliente não encontrado.")
 
-    print("Cliente não encontrado.")
+# Função para adicionar uma compra na planilha
 
 
 def adicionar_compra():
+    planilha = client.open('Cashback The Bench')
+    sheet = planilha.get_worksheet(0)
+
     cpf = input("Digite o CPF do cliente: ")
     valor_compra = float(input("Digite o valor da compra: "))
 
     # Atualiza o cashback do cliente
-    rows = []
-    with open('cashback.csv', 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if cpf == row[0]:
-                row[3] = str(float(row[3]) + (valor_compra * 0.02))
-            rows.append(row)
+    cpf_list = sheet.col_values(1)
+    if cpf in cpf_list:
+        row_index = cpf_list.index(cpf) + 1
+        saldo = float(sheet.cell(row_index, 4).value)
+        sheet.update_cell(row_index, 4, str(saldo + (valor_compra * 0.02)))
+        print("Compra adicionada com sucesso.")
+    else:
+        print("Cliente não encontrado.")
 
-    with open('cashback.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerows(rows)
-
-    print("Compra adicionada com sucesso.")
+# Função para utilizar o saldo de um cliente na planilha
 
 
 def utilizar_saldo():
+    planilha = client.open('Cashback The Bench')
+    sheet = planilha.get_worksheet(0)
+
     cpf = input("Digite o CPF do cliente: ")
     valor_utilizado = float(input("Digite o valor a ser utilizado do saldo: "))
 
     # Atualiza o cashback do cliente
-    rows = []
-    with open('cashback.csv', 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if cpf == row[0]:
-                if valor_utilizado <= float(row[3]):
-                    row[3] = str(float(row[3]) - valor_utilizado)
-                else:
-                    print("Saldo insuficiente.")
-                    return
-            rows.append(row)
-
-    with open('cashback.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerows(rows)
-
-    print("Saldo utilizado com sucesso.")
+    cpf_list = sheet.col_values(1)
+    if cpf in cpf_list:
+        row_index = cpf_list.index(cpf) + 1
+        saldo = float(sheet.cell(row_index, 4).value)
+        if valor_utilizado <= saldo:
+            sheet.update_cell(row_index, 4, str(saldo - valor_utilizado))
+            print("Saldo utilizado com sucesso.")
+        else:
+            print("Saldo insuficiente.")
+    else:
+        print("Cliente não encontrado.")
 
 # Função principal do programa
 
@@ -90,7 +102,6 @@ def main():
         print("3 - Adicionar compra")
         print("4 - Utilizar saldo")
         print("0 - Sair")
-
         opcao = input("Digite a opção desejada: ")
 
         if opcao == '1':
