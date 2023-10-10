@@ -4,7 +4,7 @@ from google.oauth2.service_account import Credentials
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 credentials = Credentials.from_service_account_file(
-    'C:\\Users\\admin\\Desktop\\Projetos Luan\\Projetos Python\\Cashback\\cashback-the-bench-json-1ff0645ee92a.json', scopes=scope)
+    'C:\\Users\\admin\\Desktop\\Projetos Luan\\Projetos Python\\Cashback\\cashback-the-bench-401520-171538fa2e32.json', scopes=scope)
 client = gspread.authorize(credentials)
 
 SAMPLE_SPREADSHEET_ID = '1FzBe8Us-Z9Nh4bh2wHEI8OJ7CMZpaGd-4w7ncnEaCzo'
