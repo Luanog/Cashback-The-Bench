@@ -1,44 +1,37 @@
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Configuração das credenciais do Google Sheets
 scope = ['https://spreadsheets.google.com/feeds',
          'https://www.googleapis.com/auth/drive']
 credentials = Credentials.from_service_account_file(
     'C:\\Users\\admin\\Desktop\\Projetos Luan\\Projetos Python\\Cashback\\cashback-the-bench-json-1ff0645ee92a.json', scopes=scope)
 client = gspread.authorize(credentials)
 
-# Função para cadastrar um cliente na planilha
+SAMPLE_SPREADSHEET_ID = '1FzBe8Us-Z9Nh4bh2wHEI8OJ7CMZpaGd-4w7ncnEaCzo'
+SAMPLE_RANGE_NAME = 'Página1!A1:E'
 
 
 def cadastrar_cliente():
-    planilha = client.open('Cashback The Bench')
+    planilha = client.open_by_key(SAMPLE_SPREADSHEET_ID)
     sheet = planilha.get_worksheet(0)
-
     cpf = input("Digite o CPF do cliente: ")
     nome = input("Digite o nome do cliente: ")
     cidade = input("Digite a cidade do cliente: ")
 
-    # Verifica se o CPF já está cadastrado
     cpf_list = sheet.col_values(1)
     if cpf in cpf_list:
         print("CPF já cadastrado. Por favor, tente novamente.")
         return
 
-    # Cria o novo cadastro do cliente com saldo zero
     sheet.append_row([cpf, nome, cidade, 0])
     print("Cliente cadastrado com sucesso!")
 
-# Função para consultar o saldo de um cliente na planilha
-
 
 def consultar_saldo():
-    planilha = client.open('Cashback The Bench')
+    planilha = client.open_by_key(SAMPLE_SPREADSHEET_ID)
     sheet = planilha.get_worksheet(0)
-
     cpf = input("Digite o CPF do cliente: ")
 
-    # Busca o saldo do cliente
     cpf_list = sheet.col_values(1)
     if cpf in cpf_list:
         row_index = cpf_list.index(cpf) + 1
@@ -48,17 +41,13 @@ def consultar_saldo():
     else:
         print("Cliente não encontrado.")
 
-# Função para adicionar uma compra na planilha
-
 
 def adicionar_compra():
-    planilha = client.open('Cashback The Bench')
+    planilha = client.open_by_key(SAMPLE_SPREADSHEET_ID)
     sheet = planilha.get_worksheet(0)
-
     cpf = input("Digite o CPF do cliente: ")
     valor_compra = float(input("Digite o valor da compra: "))
 
-    # Atualiza o cashback do cliente
     cpf_list = sheet.col_values(1)
     if cpf in cpf_list:
         row_index = cpf_list.index(cpf) + 1
@@ -68,17 +57,13 @@ def adicionar_compra():
     else:
         print("Cliente não encontrado.")
 
-# Função para utilizar o saldo de um cliente na planilha
-
 
 def utilizar_saldo():
-    planilha = client.open('Cashback The Bench')
+    planilha = client.open_by_key(SAMPLE_SPREADSHEET_ID)
     sheet = planilha.get_worksheet(0)
-
     cpf = input("Digite o CPF do cliente: ")
     valor_utilizado = float(input("Digite o valor a ser utilizado do saldo: "))
 
-    # Atualiza o cashback do cliente
     cpf_list = sheet.col_values(1)
     if cpf in cpf_list:
         row_index = cpf_list.index(cpf) + 1
@@ -91,8 +76,6 @@ def utilizar_saldo():
     else:
         print("Cliente não encontrado.")
 
-# Função principal do programa
-
 
 def main():
     while True:
@@ -103,7 +86,6 @@ def main():
         print("4 - Utilizar saldo")
         print("0 - Sair")
         opcao = input("Digite a opção desejada: ")
-
         if opcao == '1':
             cadastrar_cliente()
         elif opcao == '2':
