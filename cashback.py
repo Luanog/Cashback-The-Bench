@@ -1,4 +1,6 @@
 import tkinter as tk
+import datetime
+import re
 from tkinter import messagebox, ttk
 import gspread
 from google.oauth2.service_account import Credentials
@@ -104,38 +106,54 @@ class App:
         """
         janela_cadastrar = tk.Toplevel(self.janela)
         janela_cadastrar.title("Cadastrar Cliente")
-        janela_cadastrar.geometry("500x400")
-
+        janela_cadastrar.geometry("500x500")
         label_cpf = ttk.Label(
             janela_cadastrar, text="CPF:", font=("Arial", 16))
         label_cpf.pack(pady=10)
         entry_cpf = ttk.Entry(janela_cadastrar, width=30, font=("Arial", 16))
         entry_cpf.pack(pady=10)
-
         label_nome = ttk.Label(
             janela_cadastrar, text="Nome:", font=("Arial", 16))
         label_nome.pack(pady=10)
         entry_nome = ttk.Entry(janela_cadastrar, width=30, font=("Arial", 16))
         entry_nome.pack(pady=10)
-
         label_cidade = ttk.Label(
             janela_cadastrar, text="Cidade:", font=("Arial", 16))
         label_cidade.pack(pady=10)
         entry_cidade = ttk.Entry(
             janela_cadastrar, width=30, font=("Arial", 16))
         entry_cidade.pack(pady=10)
-
+        label_telefone = ttk.Label(
+            janela_cadastrar, text="Telefone:", font=("Arial", 16))
+        label_telefone.pack(pady=10)
+        entry_telefone = ttk.Entry(
+            janela_cadastrar, width=30, font=("Arial", 16))
+        entry_telefone.pack(pady=10)
         botao_confirmar = ttk.Button(janela_cadastrar, text="Confirmar",
                                      command=lambda: self.cadastrar_cliente(entry_cpf.get(), entry_nome.get(),
-                                                                            entry_cidade.get()), style="TButton")
+                                                                            entry_cidade.get(), entry_telefone.get()), style="TButton")
         botao_confirmar.pack(pady=10)
 
-    def cadastrar_cliente(self, cpf, nome, cidade):
+    def cadastrar_cliente(self, cpf, nome, cidade, telefone):
         """
-        Cadastra um cliente com o CPF, nome e cidade fornecidos.
+        Cadastra um cliente com CPF, nome, cidade e telefone fornecidos.
         """
-        # TODO: Implementar a lógica de cadastro do cliente
-        messagebox.showinfo("Sucesso", "Cliente cadastrado com sucesso!")
+        # Verifica se o CPF já está cadastrado
+        if cpf in self.cpf_list:
+            messagebox.showerror("Erro", "Cliente já cadastrado.")
+        else:
+            # Obtenha o número da próxima linha vazia na planilha
+            next_row = len(self.sheet.get_all_values()) + 1
+
+            # Adicione os dados do cliente na próxima linha vazia
+            self.sheet.update(f'A{next_row}', cpf)
+            self.sheet.update(f'B{next_row}', nome)
+            self.sheet.update(f'C{next_row}', cidade)
+            self.sheet.update(f'D{next_row}', telefone)
+            # Define o saldo inicial como 0,00
+            self.sheet.update(f'E{next_row}', '0.00')
+
+            messagebox.showinfo("Sucesso", "Cliente cadastrado com sucesso!")
 
     def abrir_janela_consultar(self):
         """
@@ -145,13 +163,11 @@ class App:
         janela_consultar.title("Consultar Saldo")
         janela_consultar.geometry("400x300")
         janela_consultar.configure(bg="white")
-
         label_cpf = ttk.Label(janela_consultar, text="CPF:", background="white", foreground="black",
                               font=("Arial", 16))
         label_cpf.pack(pady=10)
         entry_cpf = ttk.Entry(janela_consultar, width=30, font=("Arial", 16))
         entry_cpf.pack(pady=10)
-
         botao_confirmar = ttk.Button(janela_consultar, text="Confirmar",
                                      command=lambda: self.consultar_saldo(entry_cpf.get()), style="TButton")
         botao_confirmar.pack(pady=10)
@@ -162,7 +178,7 @@ class App:
         """
         if cpf in self.cpf_list:
             row_index = self.cpf_list.index(cpf) + 1
-            saldo = float(self.sheet.cell(row_index, 4).value)
+            saldo = float(self.sheet.cell(row_index, 5).value)
             messagebox.showinfo("Saldo", f"Saldo do cliente {
                                 self.sheet.cell(row_index, 2).value}: R${saldo:.2f}")
         else:
@@ -196,18 +212,31 @@ class App:
         botao_confirmar.pack(pady=10)
 
     def adicionar_compra(self, cpf, valor_compra):
-        """
-        Adiciona uma compra para um cliente com o CPF fornecido e o valor da compra.
-        """
         if cpf in self.cpf_list:
             row_index = self.cpf_list.index(cpf) + 1
-            saldo = float(self.sheet.cell(row_index, 4).value)
-            self.sheet.update_cell(row_index, 4, str(
-                saldo + (valor_compra * 0.02)))
+            cashback_celula = self.sheet.cell(row_index, 5).value
+            if cashback_celula is None or cashback_celula == '':
+                cashback = 0.0
+            else:
+                cashback = float(cashback_celula)
+            cashback += valor_compra * 0.02  # Calcula o valor de cashback atualizado
+            # Atualiza a coluna "cashback" com o novo valor
+            self.sheet.update(f"E{row_index}", f"{cashback:.2f}")
+            entradas_celula = self.sheet.cell(row_index, 6).value
+            if entradas_celula is None or entradas_celula == '':
+                entradas = ""
+            else:
+                entradas = entradas_celula
+            if entradas != "":
+                entradas += " | "  # Adiciona um caractere separador se já existir valor na coluna "entradas"
+            data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            # Adiciona a data, hora e valor da compra à coluna "entradas"
+            entradas += f"{data_hora_atual} - R${valor_compra * 0.02:.2f}"
+            # Atualiza a coluna "entradas" com o novo valor
+            self.sheet.update(f"F{row_index}", entradas)
             nome_cliente = self.sheet.cell(row_index, 2).value
-            novo_saldo = self.sheet.cell(row_index, 4).value
-            messagebox.showinfo("Sucesso",
-                                f"Compra adicionada com sucesso para {nome_cliente}.\nNovo saldo: R${novo_saldo}")
+            messagebox.showinfo("Sucesso", f"Compra adicionada com sucesso para {
+                                nome_cliente}.\nNovo cashback: R${cashback:.2f}")
         else:
             messagebox.showerror("Erro", "Cliente não encontrado.")
 
@@ -239,18 +268,28 @@ class App:
         botao_confirmar.pack(pady=10)
 
     def utilizar_saldo(self, cpf, valor_utilizado):
-        """
-        Utiliza o saldo de um cliente com o CPF fornecido e o valor a ser utilizado.
-        """
         if cpf in self.cpf_list:
             row_index = self.cpf_list.index(cpf) + 1
-            saldo = float(self.sheet.cell(row_index, 4).value)
-            self.sheet.update_cell(row_index, 4, str(saldo - valor_utilizado))
+            saldo = float(self.sheet.cell(row_index, 5).value)
             if valor_utilizado <= saldo:
+                self.sheet.update_cell(
+                    row_index, 5, str(saldo - valor_utilizado))
+                data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+                movimentacao = f"{data_hora_atual} - R${valor_utilizado:.2f}"
+                saidas_celula = self.sheet.cell(row_index, 7).value
+                if saidas_celula is None or saidas_celula == '':
+                    saidas = ""
+                else:
+                    saidas = saidas_celula
+                if saidas != "":
+                    saidas += " | "  # Adiciona um caractere separador se já existir valor na coluna "saídas"
+                saidas += movimentacao  # Adiciona a movimentação à coluna "saídas"
+                # Atualiza a coluna "saídas" com o novo valor
+                self.sheet.update(f"G{row_index}", saidas)
                 nome_cliente = self.sheet.cell(row_index, 2).value
-                novo_saldo = self.sheet.cell(row_index, 4).value
-                messagebox.showinfo("Sucesso",
-                                    f"Saldo utilizado com sucesso para {nome_cliente}.\nNovo saldo: R${novo_saldo}")
+                novo_saldo = self.sheet.cell(row_index, 5).value
+                messagebox.showinfo("Sucesso", f"Saldo utilizado com sucesso para {
+                                    nome_cliente}.\nNovo saldo: R${novo_saldo}")
             else:
                 messagebox.showerror("Erro", "Saldo insuficiente.")
         else:
