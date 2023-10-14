@@ -163,18 +163,18 @@ class App:
         """
         Abre uma janela para consultar o saldo de um cliente.
         """
-        self.janela_consultar = tk.Toplevel(self.janela)
-        self.janela_consultar.title("Consultar Saldo")
-        self.janela_consultar.geometry("400x300")
-        self.janela_consultar.configure(bg="white")
-        label_cpf = ttk.Label(self.janela_consultar, text="CPF:", background="white", foreground="black",
+        janela_consultar = tk.Toplevel(self.janela)
+        janela_consultar.title("Consultar Saldo")
+        janela_consultar.geometry("400x300")
+        janela_consultar.configure(bg="white")
+        label_cpf = ttk.Label(janela_consultar, text="CPF:", background="white", foreground="black",
                               font=("Arial", 16))
         label_cpf.pack(pady=10)
-        entry_cpf = ttk.Entry(self.janela_consultar,
+        entry_cpf = ttk.Entry(janela_consultar,
                               width=30, font=("Arial", 16))
         entry_cpf.pack(pady=10)
-        botao_confirmar = ttk.Button(self.janela_consultar, text="Confirmar",
-                                     command=lambda: self.consultar_saldo(entry_cpf.get(), self.janela_consultar), style="TButton")
+        botao_confirmar = ttk.Button(janela_consultar, text="Confirmar",
+                                     command=lambda: self.consultar_saldo(entry_cpf.get(), janela_consultar), style="TButton")
         botao_confirmar.pack(pady=10)
 
     def consultar_saldo(self, cpf, janela_consultar):
@@ -208,44 +208,49 @@ class App:
         entry_valor = ttk.Entry(janela_adicionar, width=30, font=("Arial", 16))
         entry_valor.pack(pady=10)
         botao_confirmar = ttk.Button(janela_adicionar, text="Confirmar",
-                                     command=lambda: self.adicionar_compra(entry_cpf.get(), float(entry_valor.get()), janela_adicionar), style="TButton")
+                                     command=lambda: self.adicionar_compra(entry_cpf.get(), str(entry_valor.get()), janela_adicionar), style="TButton")
         botao_confirmar.pack(pady=10)
 
     def adicionar_compra(self, cpf, valor_compra, janela_adicionar):
         if cpf in self.cpf_list:
             row_index = self.cpf_list.index(cpf) + 1
             cashback_celula = self.sheet.cell(row_index, 5).value
+
+            # Substituir vírgula por ponto, se necessário
+            valor_compra = valor_compra.replace(',', '.')
+
+            # Verificar se o valor é um float válido
+            try:
+                valor_compra = float(valor_compra)
+            except ValueError:
+                messagebox.showerror(
+                    'Erro', 'Valor inválido. Certifique-se de digitar um número com duas casas decimais.')
+                return
+
             if cashback_celula is None or cashback_celula == '':
                 cashback = 0.0
             else:
                 cashback = float(cashback_celula)
             cashback += valor_compra * 0.02  # Calcula o valor de cashback atualizado
-
             # Atualiza a coluna "cashback" com o novo valor
             self.sheet.update(f'E{row_index}', f'{cashback:.2f}')
-
             entradas_celula = self.sheet.cell(row_index, 6).value
             if entradas_celula is None or entradas_celula == '':
                 entradas = ''
             else:
                 entradas = entradas_celula
-
             if entradas != '':
                 entradas += ' | '  # Adiciona um caractere separador se já existir valor na coluna "entradas"
-
             data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
             # Adiciona a data, hora e valor da compra à coluna "entradas"
             entradas += f'{data_hora_atual} - R${valor_compra * 0.02:.2f}'
-
             # Atualiza a coluna "entradas" com o novo valor
             self.sheet.update(f'F{row_index}', entradas)
-
             nome_cliente = self.sheet.cell(row_index, 2).value
             messagebox.showinfo('Sucesso', f'Compra adicionada com sucesso para {
                                 nome_cliente}.\nNovo cashback: R${cashback:.2f}')
         else:
             messagebox.showerror('Erro', 'Cliente não encontrado.')
-
         janela_adicionar.destroy()  # Fecha a janela
 
     def abrir_janela_utilizar(self):
@@ -266,18 +271,26 @@ class App:
         entry_valor = ttk.Entry(janela_utilizar, width=30, font=("Arial", 16))
         entry_valor.pack(pady=10)
         botao_confirmar = ttk.Button(janela_utilizar, text="Confirmar",
-                                     command=lambda: self.utilizar_saldo(entry_cpf.get(), float(entry_valor.get()), janela_utilizar), style="TButton")
+                                     command=lambda: self.utilizar_saldo(entry_cpf.get(), str(entry_valor.get()), janela_utilizar), style="TButton")
         botao_confirmar.pack(pady=10)
 
     def utilizar_saldo(self, cpf, valor_utilizado, janela_utilizar):
         if cpf in self.cpf_list:
             row_index = self.cpf_list.index(cpf) + 1
             saldo = float(self.sheet.cell(row_index, 5).value)
-            if valor_utilizado <= saldo:
-                self.sheet.update_cell(
-                    row_index, 5, str(saldo - valor_utilizado))
+            valor_compra = valor_utilizado.replace(
+                ',', '.')  # Substituir vírgula por ponto
+            try:
+                valor_compra = float(valor_compra)  # Converter para float
+            except ValueError:
+                messagebox.showerror(
+                    'Erro', 'Valor inválido. Certifique-se de digitar um número com duas casas decimais.')
+                return
+
+            if valor_compra <= saldo:
+                self.sheet.update_cell(row_index, 5, str(saldo - valor_compra))
                 data_hora_atual = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-                movimentacao = f"{data_hora_atual} - R${valor_utilizado:.2f}"
+                movimentacao = f"{data_hora_atual} - R${valor_compra:.2f}"
                 saidas_celula = self.sheet.cell(row_index, 7).value
                 if saidas_celula is None or saidas_celula == '':
                     saidas = ""
