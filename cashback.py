@@ -147,6 +147,16 @@ class App:
         """
         Cadastra um cliente com CPF, nome, cidade e telefone fornecidos.
         """
+        if len(cpf) < 11:
+            messagebox.showerror(
+                'Erro', 'O CPF deve conter no mínimo 11 números.')
+            return
+
+        if len(telefone) < 11:
+            messagebox.showerror(
+                'Erro', 'O telefone deve ser o numero do celular + DDD.')
+            return
+
         if cpf in self.cpf_list:
             messagebox.showerror("Erro", "Cliente já cadastrado.")
         else:
@@ -157,7 +167,7 @@ class App:
             self.sheet.update(f'D{next_row}', telefone)
             self.sheet.update(f'E{next_row}', '0.00')
             messagebox.showinfo("Sucesso", "Cliente cadastrado com sucesso!")
-        janela_cadastrar.destroy()  # Adiciona essa linha para fechar a janela
+            janela_cadastrar.destroy()  # Adiciona essa linha para fechar a janela
 
     def abrir_janela_consultar(self):
         """
@@ -170,8 +180,7 @@ class App:
         label_cpf = ttk.Label(janela_consultar, text="CPF:", background="white", foreground="black",
                               font=("Arial", 16))
         label_cpf.pack(pady=10)
-        entry_cpf = ttk.Entry(janela_consultar,
-                              width=30, font=("Arial", 16))
+        entry_cpf = ttk.Entry(janela_consultar, width=30, font=("Arial", 16))
         entry_cpf.pack(pady=10)
         botao_confirmar = ttk.Button(janela_consultar, text="Confirmar",
                                      command=lambda: self.consultar_saldo(entry_cpf.get(), janela_consultar), style="TButton")
